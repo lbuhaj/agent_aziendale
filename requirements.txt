@@ -1,0 +1,12 @@
+flask
+flask-cors
+langchain
+langchain-community
+langchain-groq
+langchain-chroma
+chromadb
+pypdf
+python-dotenv
+ollama
+groq
+sentence-transformers

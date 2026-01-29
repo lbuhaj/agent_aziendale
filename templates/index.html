@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HR AI Intelligence</title>
+    <style>
+        :root { --primary: #2c3e50; --accent: #3498db; }
+        body { display: flex; height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; }
+        
+        /* SIDEBAR */
+        #sidebar { width: 300px; background: var(--primary); color: white; padding: 20px; display: flex; flex-direction: column; }
+        .status-card { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-top: 20px; }
+        
+        /* CHAT AREA */
+        #main { flex: 1; display: flex; flex-direction: column; background: #f5f6fa; }
+        #chat-window { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .msg { padding: 12px; border-radius: 10px; max-width: 80%; }
+        .user { align-self: flex-end; background: var(--accent); color: white; }
+        .agent { align-self: flex-start; background: white; border: 1px solid #ddd; }
+        
+        /* INPUT */
+        #input-area { padding: 20px; background: white; display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 20px; background: var(--accent); color: white; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div id="sidebar">
+        <h2>HR Dashboard</h2>
+        <div class="status-card">
+            <h4>Stato Sistema</h4>
+            <p>Database: <span id="db-status">Pronto</span></p>
+            <button onclick="syncDB()" style="width: 100%; background: #27ae60;">Sincronizza PDF</button>
+        </div>
+        <div class="status-card">
+            <h4>Agenti Attivi</h4>
+            <ul>
+                <li>Planner (Ollama)</li>
+                <li>Search (ChromaDB)</li>
+                <li>Critic (GPT-4o)</li>
+            </ul>
+        </div>
+    </div>
+
+    <div id="main">
+        <div id="chat-window">
+            <div class="msg agent">Benvenuto. Carica i CV nella cartella dedicata e chiedimi di cercare un profilo specifico.</div>
+        </div>
+        <div id="input-area">
+            <input type="text" id="user-msg" placeholder="Esempio: Cercami un esperto di Chimica Organica...">
+            <button onclick="sendMessage()">Interroga Sistema</button>
+        </div>
+    </div>
+
+    <script>
+        async function sendMessage() {
+            const input = document.getElementById('user-msg');
+            const chat = document.getElementById('chat-window');
+            const text = input.value;
+            if(!text) return;
+
+            chat.innerHTML += `<div class="msg user">${text}</div>`;
+            input.value = '';
+
+            const response = await fetch('/ask', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({text: text})
+            });
+            const data = await response.json();
+            chat.innerHTML += `<div class="msg agent">${data.answer}</div>`;
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        async function syncDB() {
+            document.getElementById('db-status').innerText = "Sincronizzazione...";
+            const response = await fetch('/sync', {method: 'POST'});
+            const data = await response.json();
+            alert(data.message);
+            document.getElementById('db-status').innerText = "Aggiornato";
+        }
+    </script>
+</body>
+</html>
