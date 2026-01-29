@@ -1,10 +1,13 @@
 from flask import Flask, render_template, request, jsonify
 from agents import HumanCapitalSystem
 from database import ingest_cvs
+from dotenv import load_dotenv
 import os
 
+# Carica il file .env all'avvio
+load_dotenv()
+
 app = Flask(__name__)
-# Inizializziamo il sistema (assicurati che la chiave Groq sia settata prima)
 system = HumanCapitalSystem()
 
 @app.route('/')

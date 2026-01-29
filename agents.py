@@ -2,12 +2,21 @@ import os
 import ollama
 from groq import Groq
 from database import get_vector_db
+from dotenv import load_dotenv
+
+# Carica le variabili dal file .env
+load_dotenv()
 
 class HumanCapitalSystem:
     def __init__(self):
         self.db = get_vector_db()
-        # Assicurati di avere GROQ_API_KEY nel tuo ambiente
-        self.client_groq = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+        
+        # Recupera la chiave caricata da load_dotenv()
+        api_key = os.getenv("GROQ_API_KEY")
+        if not api_key:
+            raise ValueError("Errore: GROQ_API_KEY non trovata nel file .env")
+            
+        self.client_groq = Groq(api_key=api_key)
 
     # 1. AGENTE PARSER (Ollama - Locale)
     def parser_agent(self, raw_text):
@@ -41,10 +50,8 @@ class HumanCapitalSystem:
 
     # 4. AGENTE PLANNER (Orchestratore)
     def orchestrate(self, user_message):
-        # Il Planner decide di cercare nel DB
         context = self.search_agent(user_message)
         if not context:
             return "Nessun profilo trovato nel database aziendale."
         
-        # Il Planner chiede al Critic di validare e rispondere
         return self.critic_agent(context, user_message)
