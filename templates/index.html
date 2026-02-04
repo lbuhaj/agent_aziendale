@@ -2,54 +2,41 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HR AI Intelligence</title>
+    <title>HR Intelligence</title>
     <style>
         :root { --primary: #2c3e50; --accent: #3498db; }
-        body { display: flex; height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; }
-        
-        /* SIDEBAR */
-        #sidebar { width: 300px; background: var(--primary); color: white; padding: 20px; display: flex; flex-direction: column; }
-        .status-card { background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px; margin-top: 20px; }
-        
-        /* CHAT AREA */
-        #main { flex: 1; display: flex; flex-direction: column; background: #f5f6fa; }
+        body { display: flex; height: 100vh; margin: 0; font-family: 'Segoe UI', sans-serif; overflow: hidden;}
+        #sidebar { width: 320px; background: var(--primary); color: white; padding: 25px; box-sizing: border-box; }
+        #main { flex: 1; display: flex; flex-direction: column; background: #f5f6fa; height: 100vh; }
         #chat-window { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-        .msg { padding: 12px; border-radius: 10px; max-width: 80%; }
+        .msg { padding: 12px 18px; border-radius: 15px; max-width: 80%; line-height: 1.4; }
         .user { align-self: flex-end; background: var(--accent); color: white; }
         .agent { align-self: flex-start; background: white; border: 1px solid #ddd; }
-        
-        /* INPUT */
-        #input-area { padding: 20px; background: white; display: flex; gap: 10px; }
-        input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 5px; }
-        button { padding: 10px 20px; background: var(--accent); color: white; border: none; border-radius: 5px; cursor: pointer; }
+        #input-area { padding: 20px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; }
+        input[type="text"] { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 8px; }
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; color: white; font-weight: bold; }
+        .btn-blue { background: var(--accent); }
+        .card { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 12px; }
     </style>
 </head>
 <body>
     <div id="sidebar">
         <h2>HR Dashboard</h2>
-        <div class="status-card">
-            <h4>Stato Sistema</h4>
-            <p>Database: <span id="db-status">Pronto</span></p>
-            <button onclick="syncDB()" style="width: 100%; background: #27ae60;">Sincronizza PDF</button>
-        </div>
-        <div class="status-card">
-            <h4>Agenti Attivi</h4>
-            <ul>
-                <li>Planner (Ollama)</li>
-                <li>Search (ChromaDB)</li>
-                <li>Critic (GPT-4o)</li>
-            </ul>
+        <div class="card">
+            <h4 style="margin-top:0">📁 Carica nuovo CV</h4>
+            <p style="font-size: 0.8em; opacity: 0.8;">Trascina qui il file PDF del candidato</p>
+            <input type="file" id="cv-file" accept=".pdf" style="width: 100%; margin-bottom: 15px; color: white;">
+            <button class="btn btn-blue" onclick="uploadCV()" style="width: 100%;">Analizza e Carica</button>
         </div>
     </div>
 
     <div id="main">
         <div id="chat-window">
-            <div class="msg agent">Benvenuto. Carica i CV nella cartella dedicata e chiedimi di cercare un profilo specifico.</div>
+            <div class="msg agent">Sistema pronto. I CV presenti nel database sono già stati analizzati. Come posso aiutarti oggi?</div>
         </div>
         <div id="input-area">
-            <input type="text" id="user-msg" placeholder="Esempio: Cercami un esperto di Chimica Organica...">
-            <button onclick="sendMessage()">Interroga Sistema</button>
+            <input type="text" id="user-msg" placeholder="Cerca un esperto o scrivi un messaggio..." onkeypress="if(event.key==='Enter') sendMessage()">
+            <button class="btn btn-blue" onclick="sendMessage()">Invia</button>
         </div>
     </div>
 
@@ -57,28 +44,49 @@
         async function sendMessage() {
             const input = document.getElementById('user-msg');
             const chat = document.getElementById('chat-window');
-            const text = input.value;
+            const text = input.value.trim();
             if(!text) return;
 
             chat.innerHTML += `<div class="msg user">${text}</div>`;
             input.value = '';
+            chat.scrollTop = chat.scrollHeight;
 
-            const response = await fetch('/ask', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({text: text})
-            });
-            const data = await response.json();
-            chat.innerHTML += `<div class="msg agent">${data.answer}</div>`;
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({text: text})
+                });
+                const data = await response.json();
+                chat.innerHTML += `<div class="msg agent">${data.answer}</div>`;
+            } catch {
+                chat.innerHTML += `<div class="msg agent">Errore di connessione.</div>`;
+            }
             chat.scrollTop = chat.scrollHeight;
         }
 
-        async function syncDB() {
-            document.getElementById('db-status').innerText = "Sincronizzazione...";
-            const response = await fetch('/sync', {method: 'POST'});
-            const data = await response.json();
-            alert(data.message);
-            document.getElementById('db-status').innerText = "Aggiornato";
+        async function uploadCV() {
+            const fileInput = document.getElementById('cv-file');
+            if (fileInput.files.length === 0) return alert("Scegli un file!");
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+
+            const btn = event.target;
+            btn.innerText = "Analisi in corso...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/upload', {method: 'POST', body: formData});
+                const data = await response.json();
+                alert(data.message);
+                fileInput.value = '';
+            } catch {
+                alert("Errore durante il caricamento.");
+            } finally {
+                btn.innerText = "Analizza e Carica";
+                btn.disabled = false;
+            }
         }
     </script>
 </body>
